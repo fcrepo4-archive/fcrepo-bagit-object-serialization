@@ -34,10 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
 import javax.jcr.Node;
 import javax.jcr.Property;
-import javax.jcr.Repository;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
@@ -45,9 +43,7 @@ import javax.jcr.Value;
 import org.fcrepo.Datastream;
 import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
-import org.fcrepo.serialization.FedoraObjectSerializer;
-import org.fcrepo.services.DatastreamService;
-import org.fcrepo.services.ObjectService;
+import org.fcrepo.serialization.BaseFedoraObjectSerializer;
 import org.fcrepo.utils.FedoraNodeIterator;
 import org.fcrepo.utils.FedoraPropertyIterator;
 import org.slf4j.Logger;
@@ -56,16 +52,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
 
-public class BagItSerializer implements FedoraObjectSerializer {
-
-    @Inject
-    ObjectService objService;
-
-    @Inject
-    DatastreamService dsService;
-
-    @Inject
-    Repository repo;
+public class BagItSerializer extends BaseFedoraObjectSerializer {
 
     public Set<String> prefixes;
 
