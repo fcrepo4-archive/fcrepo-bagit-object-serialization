@@ -69,5 +69,6 @@
 
     <!-- Mints PIDs-->
     <bean class="org.fcrepo.identifiers.UUIDPidMinter"/>
+    <bean class="org.fcrepo.session.SessionFactory"/>
 
 </beans>
