@@ -20,16 +20,15 @@ import gov.loc.repository.bagit.BagFactory;
 import gov.loc.repository.bagit.BagFile;
 import gov.loc.repository.bagit.BagInfoTxt;
 import gov.loc.repository.bagit.utilities.SimpleResult;
+import gov.loc.repository.bagit.utilities.namevalue.NameValueReader.NameValue;
 import gov.loc.repository.bagit.writer.impl.ZipWriter;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Writer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -44,7 +43,7 @@ import org.fcrepo.Datastream;
 import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
-import org.fcrepo.utils.FedoraNodeIterator;
+import org.fcrepo.utils.NodeIterator;
 import org.fcrepo.utils.FedoraPropertyIterator;
 import org.slf4j.Logger;
 
@@ -61,7 +60,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     private Logger logger = getLogger(this.getClass());
 
     @Override
-    public void serialize(FedoraObject obj, OutputStream out)
+    public void serialize(final FedoraObject obj, final OutputStream out)
             throws RepositoryException, IOException {
         logger.debug("Serializing object: " + obj.getName());
         try (final InputStream is =
@@ -82,23 +81,20 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         final Iterator<Property> properties =
                 new FedoraPropertyIterator(node
                         .getProperties(prefixesInGlobForm()));
-        // put 'em in a tag file for BagIt
+        // put 'em in a tag info file
         logger.trace("Recording properties...");
-        final File propFile = new File(bagFile, "bag-info.txt");
-        propFile.deleteOnExit();
-        try (final Writer writer = new FileWriter(propFile)) {
-            // slip in object name
-            writer.write("Name: " + node.getName() + "\n");
-            for (final Iterator<List<String>> i =
-                    transform(properties, property2BagItTags); i.hasNext();) {
-                for (final String tag : i.next()) {
-                    logger.debug("Recording property: " + tag);
-                    writer.write(tag + "\n");
-                }
+        final BagInfoTxt bagInfoTxt = bag.getBagInfoTxt();
+        // slip in object name
+        bagInfoTxt.put("Name", node.getName());
+        for (final Iterator<List<NameValue>> i =
+                transform(properties, property2BagItTags); i.hasNext();) {
+            for (final NameValue tag : i.next()) {
+                logger.debug("Recording property: " + tag);
+                bagInfoTxt.putList(tag);
             }
         }
+
         logger.trace("Recorded properties.");
-        bag.addFileAsTag(propFile);
 
         // now add content, if it exists
         if (node.hasNode(JCR_CONTENT)) {
@@ -118,8 +114,8 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
         // and recurse, to pick up datastream children
         for (final Iterator<Node> i =
-                filter(new FedoraNodeIterator(node.getNodes()),
-                        isFedoraDatastream); i.hasNext();) {
+                filter(new NodeIterator(node.getNodes()), isFedoraDatastream); i
+                .hasNext();) {
             final Node dsNode = i.next();
             logger.debug("Now recording child node: " + dsNode.getName());
             bag.addFileToPayload(serializeToFile(dsNode));
@@ -147,94 +143,88 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     }
 
     @Override
-    public void deserialize(InputStream stream) throws IOException,
-            RepositoryException, InvalidChecksumException {
+    public void deserialize(final Session session, final InputStream stream)
+            throws IOException, RepositoryException, InvalidChecksumException {
         logger.trace("Deserializing a Fedora object from a BagIt bag.");
-        final Session session = repo.login();
-        try {
-            final File importFile = createTempFile("fedora-bagit-import", "");
-            importFile.deleteOnExit();
-            try (final OutputStream importStream =
-                    new FileOutputStream(importFile)) {
-                copy(stream, importStream);
-            }
 
-            final Bag bag = bagFactory.createBag(importFile);
-            logger.trace("Created temporary Bag for Fedora object.");
-            final BagInfoTxt infoTxt = bag.getBagInfoTxt();
-
-            // first make object and add its properties
-            final FedoraObject object =
-                    objService.createObject(session, infoTxt.get("Name"));
-            logger.debug("Created Fedora object: " + object.getName());
-            for (final String key : filter(infoTxt.keySet(),
-                    notNameAndIsPrefixed)) {
-                List<String> values = infoTxt.getList(key);
-                logger.debug("Adding property for: " + key + " with values: " +
-                        values);
-                if (values.size() == 1) {
-                    object.getNode().setProperty(key.replace('_', ':'),
-                            values.get(0));
-                } else {
-                    object.getNode().setProperty(key.replace('_', ':'),
-                            infoTxt.getList(key).toArray(new String[0]));
-                }
-            }
-
-            // now for its datastreams
-            for (final BagFile bagFile : bag.getPayload()) {
-                logger.debug("Deserializing a datastream from filepath: " +
-                        bagFile.getFilepath());
-                final File importDsFile =
-                        createTempFile("fedora-bagit-import-ds", "");
-                importDsFile.deleteOnExit();
-                try (final InputStream dsStream = bagFile.newInputStream();
-                        final OutputStream out =
-                                new FileOutputStream(importDsFile)) {
-                    copy(dsStream, out);
-                }
-                final Bag dsBag = bagFactory.createBag(importDsFile);
-                logger.trace("Created temporary Bag file for datastream.");
-                final BagInfoTxt dsInfoTxt = dsBag.getBagInfoTxt();
-                final String dsPath =
-                        getDatastreamJcrNodePath(object.getName(), dsInfoTxt
-                                .get("Name"));
-                logger.debug("Found ds path: " + dsPath);
-                final String contentType =
-                        getDatastreamJcrNodePath(object.getName(), dsInfoTxt
-                                .get("fedora_contentType"));
-                logger.debug("Found ds contentType: " + contentType);
-                final InputStream requestBodyStream =
-                        dsBag.getPayload().iterator().next().newInputStream();
-                final Datastream ds =
-                        new Datastream(dsService.createDatastreamNode(session,
-                                dsPath, contentType, requestBodyStream));
-                logger.debug("Created Fedora datastream: " + ds.getDsId());
-            }
-
-            session.save();
-        } finally {
-            session.logout();
+        final File importFile = createTempFile("fedora-bagit-import", "");
+        importFile.deleteOnExit();
+        try (final OutputStream importStream = new FileOutputStream(importFile)) {
+            copy(stream, importStream);
         }
+
+        final Bag bag = bagFactory.createBag(importFile);
+        logger.trace("Created temporary Bag for Fedora object.");
+        final BagInfoTxt infoTxt = bag.getBagInfoTxt();
+
+        // first make object and add its properties
+        final FedoraObject object =
+                objService.createObject(session, infoTxt.get("Name"));
+        logger.debug("Created Fedora object: " + object.getName());
+        for (final String key : filter(infoTxt.keySet(), notNameAndIsPrefixed)) {
+            final List<String> values = infoTxt.getList(key);
+            logger.debug("Adding property for: " + key + " with values: " +
+                    values);
+            if (values.size() == 1) {
+                object.getNode().setProperty(key.replace('_', ':'),
+                        values.get(0));
+            } else {
+                object.getNode().setProperty(key.replace('_', ':'),
+                        infoTxt.getList(key).toArray(new String[0]));
+            }
+        }
+
+        // now for its datastreams
+        for (final BagFile bagFile : bag.getPayload()) {
+            logger.debug("Deserializing a datastream from filepath: " +
+                    bagFile.getFilepath());
+            final File importDsFile =
+                    createTempFile("fedora-bagit-import-ds", "");
+            importDsFile.deleteOnExit();
+            try (final InputStream dsStream = bagFile.newInputStream();
+                    final OutputStream out = new FileOutputStream(importDsFile)) {
+                copy(dsStream, out);
+            }
+            final Bag dsBag = bagFactory.createBag(importDsFile);
+            logger.trace("Created temporary Bag file for datastream.");
+            final BagInfoTxt dsInfoTxt = dsBag.getBagInfoTxt();
+            final String dsPath =
+                    getDatastreamJcrNodePath(object.getName(), dsInfoTxt
+                            .get("Name"));
+            logger.debug("Found ds path: " + dsPath);
+            final String contentType =
+                    getDatastreamJcrNodePath(object.getName(), dsInfoTxt
+                            .get("fedora_contentType"));
+            logger.debug("Found ds contentType: " + contentType);
+            final InputStream requestBodyStream =
+                    dsBag.getPayload().iterator().next().newInputStream();
+            final Datastream ds =
+                    new Datastream(dsService.createDatastreamNode(session,
+                            dsPath, contentType, requestBodyStream));
+            logger.debug("Created Fedora datastream: " + ds.getDsId());
+        }
+
+        session.save();
+
     }
 
-    public Function<Property, List<String>> property2BagItTags =
-            new Function<Property, List<String>>() {
+    public Function<Property, List<NameValue>> property2BagItTags =
+            new Function<Property, List<NameValue>>() {
 
                 @Override
-                public List<String> apply(final Property p) {
+                public List<NameValue> apply(final Property p) {
                     try {
                         final String name = p.getName().replace(':', '_');
                         if (p.isMultiple()) {
                             return Lists.transform(copyOf(p.getValues()),
-                                    new Function<Value, String>() {
+                                    new Function<Value, NameValue>() {
 
                                         @Override
-                                        public String apply(Value v) {
+                                        public NameValue apply(final Value v) {
                                             try {
-                                                return name + ": " +
-                                                        v.getString();
-                                            } catch (RepositoryException e) {
+                                                return new NameValue(name, v
+                                                        .getString());
+                                            } catch (final RepositoryException e) {
                                                 throw new IllegalStateException(
                                                         e);
                                             }
@@ -242,10 +232,10 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
                                     });
 
                         } else {
-                            return of(name + ": " + p.getString());
+                            return of(new NameValue(name, p.getString()));
                         }
 
-                    } catch (RepositoryException e) {
+                    } catch (final RepositoryException e) {
                         throw new IllegalStateException(e);
                     }
                 }
@@ -259,7 +249,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         }
     };
 
-    public void setPrefixes(Set<String> prefixes) {
+    public void setPrefixes(final Set<String> prefixes) {
         this.prefixes = prefixes;
     }
 
@@ -270,7 +260,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     private Function<String, String> makeGlob = new Function<String, String>() {
 
         @Override
-        public String apply(String input) {
+        public String apply(final String input) {
             // TODO Auto-generated method stub
             return input + ":*";
         }

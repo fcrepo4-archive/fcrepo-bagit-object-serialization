@@ -10,63 +10,22 @@
     http://cxf.apache.org/jaxrs http://cxf.apache.org/schemas/jaxrs.xsd
     http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
-    <import resource="classpath:META-INF/cxf/cxf.xml"/>
-
     <context:property-placeholder/>
-
-    <!-- Context that houses JAX-RS Resources that compose the API
-        as well as some utility gear. -->
-
     <context:annotation-config/>
-
-    <jaxrs:server address="http://localhost:${test.port:8080}/rest">
-        <jaxrs:serviceBeans>
-            <bean class="org.fcrepo.api.FedoraDatastreams"/>
-            <bean class="org.fcrepo.api.FedoraObjects"/>
-            <bean class="org.fcrepo.serialization.FedoraObjectsSerialized">
-                <property name="serializers">
-                    <map key-type="java.lang.String"
-                        value-type="org.fcrepo.serialization.FedoraObjectSerializer">
-                        <description>Map from formats to serializers for Fedora
-                            objects</description>
-                        <entry key="bagit">
-                            <bean class="org.fcrepo.serialization.bagit.BagItSerializer">
-                                <property name="prefixes">
-                                    <set>
-                                        <description>The prefixes of JCR properties that will be
-                                            used for serialization into bag-info.txt</description>
-                                        <value type="java.lang.String">fedora</value>
-                                        <value type="java.lang.String">dc</value>
-                                    </set>
-                                </property>
-                            </bean>
-                        </entry>
-                    </map>
-                </property>
-            </bean>
-        </jaxrs:serviceBeans>
-        <jaxrs:extensionMappings>
-            <entry key="json" value="application/json"/>
-            <entry key="xml" value="application/xml"/>
-        </jaxrs:extensionMappings>
-        <jaxrs:providers>
-            <bean class="org.fcrepo.exceptionhandlers.PathNotFoundExceptionMapper"/>
-            <bean class="org.fcrepo.exceptionhandlers.AccessControlExceptionMapper"/>
-            <bean class="org.fcrepo.exceptionhandlers.WildcardExceptionMapper">
-                <property name="showStackTrace" value="true"/>
-            </bean>
-            <bean class="org.apache.cxf.jaxrs.provider.JAXBElementProvider">
-                <property name="marshallerProperties">
-                    <util:map>
-                        <entry key="jaxb.formatted.output">
-                            <value type="java.lang.Boolean">true</value>
-                        </entry>
-                    </util:map>
-                </property>
-            </bean>
-        </jaxrs:providers>
-    </jaxrs:server>
-
+    
+    <util:map id="serializers" key-type="java.lang.String"
+        value-type="org.fcrepo.serialization.FedoraObjectSerializer">
+        <description>Map from formats to serializers for Fedora objects</description>
+        <entry key="bagit">
+            <bean class="org.fcrepo.serialization.bagit.BagItSerializer"/>
+        </entry>
+    </util:map>
+    
+    <bean class="org.fcrepo.serialization.FedoraObjectsSerialized"/>
+    
+    <context:component-scan
+        base-package="org.fcrepo.api, org.fcrepo.serialization, org.fcrepo.exceptionhandlers"/>
+    
     <!-- Mints PIDs-->
     <bean class="org.fcrepo.identifiers.UUIDPidMinter"/>
     <bean class="org.fcrepo.session.SessionFactory"/>
