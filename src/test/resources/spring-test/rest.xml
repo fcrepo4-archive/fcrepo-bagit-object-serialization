@@ -12,20 +12,29 @@
 
     <context:property-placeholder/>
     <context:annotation-config/>
-    
+
     <util:map id="serializers" key-type="java.lang.String"
         value-type="org.fcrepo.serialization.FedoraObjectSerializer">
         <description>Map from formats to serializers for Fedora objects</description>
         <entry key="bagit">
-            <bean class="org.fcrepo.serialization.bagit.BagItSerializer"/>
+            <bean class="org.fcrepo.serialization.bagit.BagItSerializer">
+                <property name="prefixes">
+                    <set value-type="java.lang.String">
+                        <value>fedora</value>
+                        <value>dc</value>
+                    </set>
+                </property>
+            </bean>
         </entry>
     </util:map>
-    
+
     <bean class="org.fcrepo.serialization.FedoraObjectsSerialized"/>
-    
+
+
+
     <context:component-scan
         base-package="org.fcrepo.api, org.fcrepo.serialization, org.fcrepo.exceptionhandlers"/>
-    
+
     <!-- Mints PIDs-->
     <bean class="org.fcrepo.identifiers.UUIDPidMinter"/>
     <bean class="org.fcrepo.session.SessionFactory"/>

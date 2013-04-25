@@ -1,6 +1,7 @@
 
 package org.fcrepo.serialization.bagit;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Collections2.transform;
 import static com.google.common.collect.ImmutableList.copyOf;
 import static com.google.common.collect.ImmutableList.of;
@@ -44,7 +45,7 @@ import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
 import org.fcrepo.utils.NodeIterator;
-import org.fcrepo.utils.FedoraPropertyIterator;
+import org.fcrepo.utils.PropertyIterator;
 import org.slf4j.Logger;
 
 import com.google.common.base.Function;
@@ -53,7 +54,7 @@ import com.google.common.collect.Lists;
 
 public class BagItSerializer extends BaseFedoraObjectSerializer {
 
-    public Set<String> prefixes;
+    private Set<String> prefixes;
 
     private BagFactory bagFactory = new BagFactory();
 
@@ -62,6 +63,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     @Override
     public void serialize(final FedoraObject obj, final OutputStream out)
             throws RepositoryException, IOException {
+        checkNotNull(obj, "Cannot serialize a null FedoraObject!");
         logger.debug("Serializing object: " + obj.getName());
         try (final InputStream is =
                 new FileInputStream(serializeToFile(obj.getNode()))) {
@@ -71,16 +73,26 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
     public File serializeToFile(final Node node) throws RepositoryException,
             IOException {
-
+        checkNotNull(node, "Cannot serialize a null Node!");
         final File bagFile = createTempDir();
+        logger.debug("Bag assembly directory created at: {}", bagFile.getPath());
+        // create bag-info.txt
+        final File bagInfoTxtFile =
+                new File(bagFile, bagFactory.getBagConstants().getBagInfoTxt());
+        if (!bagInfoTxtFile.createNewFile()) {
+            throw new IllegalStateException(
+                    "Could not create a bag-info-.txt file!");
+        }
+        logger.debug("bag-info.txt file created at: {}", bagInfoTxtFile
+                .getPath());
+        bagInfoTxtFile.deleteOnExit();
         bagFile.deleteOnExit();
         final Bag bag = bagFactory.createBag();
-
+        bag.addFileAsTag(bagInfoTxtFile);
         // get recordable properties
         logger.trace("Retrieving properties to serialize...");
         final Iterator<Property> properties =
-                new FedoraPropertyIterator(node
-                        .getProperties(prefixesInGlobForm()));
+                new PropertyIterator(node.getProperties(prefixesInGlobForm()));
         // put 'em in a tag info file
         logger.trace("Recording properties...");
         final BagInfoTxt bagInfoTxt = bag.getBagInfoTxt();
@@ -208,7 +220,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
     }
 
-    public Function<Property, List<NameValue>> property2BagItTags =
+    private Function<Property, List<NameValue>> property2BagItTags =
             new Function<Property, List<NameValue>>() {
 
                 @Override
