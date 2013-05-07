@@ -11,7 +11,6 @@ import static com.google.common.collect.Iterators.transform;
 import static com.google.common.io.ByteStreams.copy;
 import static com.google.common.io.Files.createTempDir;
 import static java.io.File.createTempFile;
-import static org.fcrepo.services.PathService.getDatastreamJcrNodePath;
 import static org.fcrepo.utils.FedoraTypesUtils.isFedoraDatastream;
 import static org.modeshape.jcr.api.JcrConstants.JCR_CONTENT;
 import static org.modeshape.jcr.api.JcrConstants.JCR_DATA;
@@ -155,7 +154,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     }
 
     @Override
-    public void deserialize(final Session session, final InputStream stream)
+    public void deserialize(final Session session, final String path, final InputStream stream)
             throws IOException, RepositoryException, InvalidChecksumException {
         logger.trace("Deserializing a Fedora object from a BagIt bag.");
 
@@ -169,10 +168,12 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         logger.trace("Created temporary Bag for Fedora object.");
         final BagInfoTxt infoTxt = bag.getBagInfoTxt();
 
+		final String objectPath = path + "/" + infoTxt.get("Name");
+
         // first make object and add its properties
         final FedoraObject object =
-                objService.createObject(session, infoTxt.get("Name"));
-        logger.debug("Created Fedora object: " + object.getName());
+                objService.createObject(session, objectPath);
+        logger.debug("Created Fedora object: " + objectPath);
         for (final String key : filter(infoTxt.keySet(), notNameAndIsPrefixed)) {
             final List<String> values = infoTxt.getList(key);
             logger.debug("Adding property for: " + key + " with values: " +
@@ -200,13 +201,9 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
             final Bag dsBag = bagFactory.createBag(importDsFile);
             logger.trace("Created temporary Bag file for datastream.");
             final BagInfoTxt dsInfoTxt = dsBag.getBagInfoTxt();
-            final String dsPath =
-                    getDatastreamJcrNodePath(object.getName(), dsInfoTxt
-                            .get("Name"));
+            final String dsPath = objectPath + "/" + dsInfoTxt.get("Name");
             logger.debug("Found ds path: " + dsPath);
-            final String contentType =
-                    getDatastreamJcrNodePath(object.getName(), dsInfoTxt
-                            .get("fedora_contentType"));
+            final String contentType = dsInfoTxt.get("fedora_contentType");
             logger.debug("Found ds contentType: " + contentType);
             final InputStream requestBodyStream =
                     dsBag.getPayload().iterator().next().newInputStream();

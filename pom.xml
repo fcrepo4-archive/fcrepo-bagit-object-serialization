@@ -12,7 +12,7 @@
   <dependencies>
     <dependency>
       <groupId>org.fcrepo</groupId>
-      <artifactId>fcrepo-object-serialization</artifactId>
+      <artifactId>fcrepo-serialization</artifactId>
       <version>${project.version}</version>
     </dependency>
     

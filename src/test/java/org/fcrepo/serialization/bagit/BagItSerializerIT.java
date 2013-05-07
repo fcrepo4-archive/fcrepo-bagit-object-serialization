@@ -15,8 +15,6 @@ import org.apache.http.util.EntityUtils;
 import org.junit.Test;
 import org.springframework.test.context.ContextConfiguration;
 
-@ContextConfiguration({"/spring-test/repo.xml", "/spring-test/rest.xml",
-        "/spring-test/test-container.xml"})
 public class BagItSerializerIT extends AbstractResourceIT {
 
     @Test
@@ -24,7 +22,7 @@ public class BagItSerializerIT extends AbstractResourceIT {
         client.execute(postObjMethod("BagIt1"));
         client.execute(postDSMethod("BagIt1", "testDS", "stuff"));
         final HttpGet getObjMethod =
-                new HttpGet(serverAddress + "export/BagIt1?format=bagit");
+                new HttpGet(serverAddress + "objects/BagIt1/fcr:export?format=bagit");
         HttpResponse response = client.execute(getObjMethod);
         assertEquals(200, response.getStatusLine().getStatusCode());
         final String content = EntityUtils.toString(response.getEntity());
@@ -32,7 +30,7 @@ public class BagItSerializerIT extends AbstractResourceIT {
         client.execute(new HttpDelete(serverAddress + "objects/BagIt1"));
         logger.debug("Deleted test object.");
         final HttpPost importMethod =
-                new HttpPost(serverAddress + "import?format=bagit");
+                new HttpPost(serverAddress + "objects/fcr:import?format=bagit");
         importMethod.setEntity(new StringEntity(content));
         assertEquals("Couldn't import!", 201, getStatus(importMethod));
         response =
@@ -41,7 +39,7 @@ public class BagItSerializerIT extends AbstractResourceIT {
                 .getStatusLine().getStatusCode());
         response =
                 client.execute(new HttpGet(serverAddress +
-                        "objects/BagIt1/datastreams/testDS"));
+                        "objects/BagIt1/testDS"));
         assertEquals("Couldn't find reimported datastream!", 200, response
                 .getStatusLine().getStatusCode());
         logger.debug("Successfully reimported!");

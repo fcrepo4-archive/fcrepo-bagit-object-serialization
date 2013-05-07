@@ -1,86 +1,128 @@
-
 package org.fcrepo.serialization.bagit;
-
-import static java.lang.Integer.MAX_VALUE;
-import static java.lang.Integer.parseInt;
-import static java.lang.System.getProperty;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.slf4j.LoggerFactory.getLogger;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.concurrent.TimeUnit;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Unmarshaller;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.util.EntityUtils;
+import org.fcrepo.jaxb.responses.access.ObjectDatastreams;
+import org.fcrepo.jaxb.responses.access.ObjectProfile;
+import org.fcrepo.jaxb.responses.management.DatastreamFixity;
+import org.fcrepo.jaxb.responses.management.DatastreamProfile;
+import org.fcrepo.utils.FedoraJcrTypes;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 @RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("/spring-test/test-container.xml")
 public abstract class AbstractResourceIT {
 
-    protected Logger logger;
+	protected Logger logger;
 
-    @Before
-    public void setLogger() {
-        logger = getLogger(this.getClass());
-    }
+	protected JAXBContext context;
 
-    protected static final int SERVER_PORT = parseInt(getProperty("test.port",
-            "8080"));
+	protected String OBJECT_PATH = "objects";
 
-    protected static final String HOSTNAME = "localhost";
+	@Before
+	public void setLogger() {
+		logger = LoggerFactory.getLogger(this.getClass());
+	}
 
-    protected static final String serverAddress = "http://" + HOSTNAME + ":" +
-            SERVER_PORT + "/rest/";
+	@Before
+	public void setContext() throws JAXBException {
+		context =
+				JAXBContext.newInstance(ObjectProfile.class,
+											   ObjectDatastreams.class, DatastreamProfile.class,
+											   DatastreamFixity.class);
+	}
 
-    protected final PoolingClientConnectionManager connectionManager =
-            new PoolingClientConnectionManager();
+	protected static final int SERVER_PORT = Integer.parseInt(System
+																	  .getProperty("test.port", "8080"));
 
-    protected static HttpClient client;
+	protected static final String HOSTNAME = "localhost";
 
-    public AbstractResourceIT() {
-        connectionManager.setMaxTotal(MAX_VALUE);
-        connectionManager.setDefaultMaxPerRoute(5);
-        connectionManager.closeIdleConnections(3, SECONDS);
-        client = new DefaultHttpClient(connectionManager);
-    }
+	protected static final String serverAddress = "http://" + HOSTNAME + ":" +
+														  SERVER_PORT + "/rest/";
 
-    protected static HttpPost postObjMethod(final String pid) {
-        return new HttpPost(serverAddress + "objects/" + pid);
-    }
+	protected final PoolingClientConnectionManager connectionManager =
+			new PoolingClientConnectionManager();
 
-    protected static HttpPost postDSMethod(final String pid, final String ds,
-            final String content) throws UnsupportedEncodingException {
-        final HttpPost post =
-                new HttpPost(serverAddress + "objects/" + pid +
-                        "/datastreams/" + ds);
-        post.setEntity(new StringEntity(content));
-        return post;
-    }
+	protected static HttpClient client;
 
-    protected static HttpPut putDSMethod(final String pid, final String ds) {
-        return new HttpPut(serverAddress + "objects/" + pid + "/datastreams/" +
-                ds);
-    }
+	public AbstractResourceIT() {
+		connectionManager.setMaxTotal(Integer.MAX_VALUE);
+		connectionManager.setDefaultMaxPerRoute(5);
+		connectionManager.closeIdleConnections(3, TimeUnit.SECONDS);
+		client = new DefaultHttpClient(connectionManager);
+	}
 
-    protected HttpResponse execute(final HttpUriRequest method)
-            throws ClientProtocolException, IOException {
-        logger.debug("Executing: " + method.getMethod() + " to " +
-                method.getURI());
-        return client.execute(method);
-    }
+	protected static HttpPost postObjMethod(final String pid) {
+		return new HttpPost(serverAddress + "objects/" + pid);
+	}
 
-    protected int getStatus(final HttpUriRequest method)
-            throws ClientProtocolException, IOException {
-        return execute(method).getStatusLine().getStatusCode();
-    }
+	protected static HttpPost
+	postObjMethod(final String pid, final String query) {
+		if (query.equals("")) {
+			return new HttpPost(serverAddress + "objects/" + pid);
+		} else {
+			return new HttpPost(serverAddress + "objects/" + pid + "?" + query);
+		}
+	}
 
+	protected static HttpPost postDSMethod(final String pid, final String ds,
+										   final String content) throws UnsupportedEncodingException {
+		final HttpPost post =
+				new HttpPost(serverAddress + "objects/" + pid +
+									 "/" + ds + "/fcr:content");
+		post.setEntity(new StringEntity(content));
+		return post;
+	}
+
+	protected static HttpPut putDSMethod(final String pid, final String ds) {
+		return new HttpPut(serverAddress + "objects/" + pid +
+								   "/" + ds + "/fcr:content");
+	}
+
+	protected HttpResponse execute(final HttpUriRequest method)
+			throws ClientProtocolException, IOException {
+		logger.debug("Executing: " + method.getMethod() + " to " +
+							 method.getURI());
+		return client.execute(method);
+	}
+
+	protected int getStatus(final HttpUriRequest method)
+			throws ClientProtocolException, IOException {
+		HttpResponse response = execute(method);
+		int result = response.getStatusLine().getStatusCode();
+		if (!(result > 199) || !(result < 400)){
+			logger.warn(EntityUtils.toString(response.getEntity()));
+		}
+		return result;
+	}
+
+	protected ObjectProfile getObject(final String pid)
+			throws ClientProtocolException, IOException, JAXBException {
+		final HttpGet get = new HttpGet(serverAddress + "objects/" + pid);
+		final HttpResponse resp = execute(get);
+		final Unmarshaller um = context.createUnmarshaller();
+		return (ObjectProfile) um.unmarshal(resp.getEntity().getContent());
+	}
 }
