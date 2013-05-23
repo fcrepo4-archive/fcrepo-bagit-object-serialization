@@ -43,7 +43,6 @@ import org.fcrepo.Datastream;
 import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
-import org.fcrepo.utils.NodeIterator;
 import org.fcrepo.utils.PropertyIterator;
 import org.slf4j.Logger;
 
@@ -90,8 +89,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         bag.addFileAsTag(bagInfoTxtFile);
         // get recordable properties
         logger.trace("Retrieving properties to serialize...");
-        final Iterator<Property> properties =
-                new PropertyIterator(node.getProperties(prefixesInGlobForm()));
+        final Iterator<Property> properties = node.getProperties(prefixesInGlobForm());
         // put 'em in a tag info file
         logger.trace("Recording properties...");
         final BagInfoTxt bagInfoTxt = bag.getBagInfoTxt();
@@ -124,10 +122,10 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         }
 
         // and recurse, to pick up datastream children
-        for (final Iterator<Node> i =
-                filter(new NodeIterator(node.getNodes()), isFedoraDatastream); i
+        for (final Iterator i =
+                filter(node.getNodes(), isFedoraDatastream); i
                 .hasNext();) {
-            final Node dsNode = i.next();
+            final Node dsNode = (Node)i.next();
             logger.debug("Now recording child node: " + dsNode.getName());
             bag.addFileToPayload(serializeToFile(dsNode));
         }

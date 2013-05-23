@@ -4,26 +4,15 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.concurrent.TimeUnit;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.util.EntityUtils;
-import org.fcrepo.jaxb.responses.access.ObjectDatastreams;
-import org.fcrepo.jaxb.responses.access.ObjectProfile;
-import org.fcrepo.jaxb.responses.management.DatastreamFixity;
-import org.fcrepo.jaxb.responses.management.DatastreamProfile;
-import org.fcrepo.utils.FedoraJcrTypes;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -37,21 +26,9 @@ public abstract class AbstractResourceIT {
 
 	protected Logger logger;
 
-	protected JAXBContext context;
-
-	protected String OBJECT_PATH = "objects";
-
 	@Before
 	public void setLogger() {
 		logger = LoggerFactory.getLogger(this.getClass());
-	}
-
-	@Before
-	public void setContext() throws JAXBException {
-		context =
-				JAXBContext.newInstance(ObjectProfile.class,
-											   ObjectDatastreams.class, DatastreamProfile.class,
-											   DatastreamFixity.class);
 	}
 
 	protected static final int SERVER_PORT = Integer.parseInt(System
@@ -78,15 +55,6 @@ public abstract class AbstractResourceIT {
 		return new HttpPost(serverAddress + "objects/" + pid);
 	}
 
-	protected static HttpPost
-	postObjMethod(final String pid, final String query) {
-		if (query.equals("")) {
-			return new HttpPost(serverAddress + "objects/" + pid);
-		} else {
-			return new HttpPost(serverAddress + "objects/" + pid + "?" + query);
-		}
-	}
-
 	protected static HttpPost postDSMethod(final String pid, final String ds,
 										   final String content) throws UnsupportedEncodingException {
 		final HttpPost post =
@@ -94,11 +62,6 @@ public abstract class AbstractResourceIT {
 									 "/" + ds + "/fcr:content");
 		post.setEntity(new StringEntity(content));
 		return post;
-	}
-
-	protected static HttpPut putDSMethod(final String pid, final String ds) {
-		return new HttpPut(serverAddress + "objects/" + pid +
-								   "/" + ds + "/fcr:content");
 	}
 
 	protected HttpResponse execute(final HttpUriRequest method)
@@ -116,13 +79,5 @@ public abstract class AbstractResourceIT {
 			logger.warn(EntityUtils.toString(response.getEntity()));
 		}
 		return result;
-	}
-
-	protected ObjectProfile getObject(final String pid)
-			throws ClientProtocolException, IOException, JAXBException {
-		final HttpGet get = new HttpGet(serverAddress + "objects/" + pid);
-		final HttpResponse resp = execute(get);
-		final Unmarshaller um = context.createUnmarshaller();
-		return (ObjectProfile) um.unmarshal(resp.getEntity().getContent());
 	}
 }

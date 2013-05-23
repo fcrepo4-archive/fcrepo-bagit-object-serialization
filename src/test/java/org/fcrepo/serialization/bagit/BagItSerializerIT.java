@@ -33,8 +33,10 @@ public class BagItSerializerIT extends AbstractResourceIT {
                 new HttpPost(serverAddress + "objects/fcr:import?format=bagit");
         importMethod.setEntity(new StringEntity(content));
         assertEquals("Couldn't import!", 201, getStatus(importMethod));
+        final HttpGet httpGet = new HttpGet(serverAddress + "objects/BagIt1");
+        httpGet.setHeader("Accepts", "application/n3");
         response =
-                client.execute(new HttpGet(serverAddress + "objects/BagIt1"));
+                client.execute(httpGet);
         assertEquals("Couldn't find reimported object!", 200, response
                 .getStatusLine().getStatusCode());
         response =
