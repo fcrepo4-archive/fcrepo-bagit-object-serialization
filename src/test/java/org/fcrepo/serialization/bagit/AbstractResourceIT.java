@@ -1,3 +1,4 @@
+
 package org.fcrepo.serialization.bagit;
 
 import java.io.IOException;
@@ -24,60 +25,60 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 @ContextConfiguration("/spring-test/test-container.xml")
 public abstract class AbstractResourceIT {
 
-	protected Logger logger;
+    protected Logger logger;
 
-	@Before
-	public void setLogger() {
-		logger = LoggerFactory.getLogger(this.getClass());
-	}
+    @Before
+    public void setLogger() {
+        logger = LoggerFactory.getLogger(this.getClass());
+    }
 
-	protected static final int SERVER_PORT = Integer.parseInt(System
-																	  .getProperty("test.port", "8080"));
+    protected static final int SERVER_PORT = Integer.parseInt(System
+            .getProperty("test.port", "8080"));
 
-	protected static final String HOSTNAME = "localhost";
+    protected static final String HOSTNAME = "localhost";
 
-	protected static final String serverAddress = "http://" + HOSTNAME + ":" +
-														  SERVER_PORT + "/rest/";
+    protected static final String serverAddress = "http://" + HOSTNAME + ":" +
+            SERVER_PORT + "/rest/";
 
-	protected final PoolingClientConnectionManager connectionManager =
-			new PoolingClientConnectionManager();
+    protected final PoolingClientConnectionManager connectionManager =
+            new PoolingClientConnectionManager();
 
-	protected static HttpClient client;
+    protected static HttpClient client;
 
-	public AbstractResourceIT() {
-		connectionManager.setMaxTotal(Integer.MAX_VALUE);
-		connectionManager.setDefaultMaxPerRoute(5);
-		connectionManager.closeIdleConnections(3, TimeUnit.SECONDS);
-		client = new DefaultHttpClient(connectionManager);
-	}
+    public AbstractResourceIT() {
+        connectionManager.setMaxTotal(Integer.MAX_VALUE);
+        connectionManager.setDefaultMaxPerRoute(5);
+        connectionManager.closeIdleConnections(3, TimeUnit.SECONDS);
+        client = new DefaultHttpClient(connectionManager);
+    }
 
-	protected static HttpPost postObjMethod(final String pid) {
-		return new HttpPost(serverAddress + "objects/" + pid);
-	}
+    protected static HttpPost postObjMethod(final String pid) {
+        return new HttpPost(serverAddress + "objects/" + pid);
+    }
 
-	protected static HttpPost postDSMethod(final String pid, final String ds,
-										   final String content) throws UnsupportedEncodingException {
-		final HttpPost post =
-				new HttpPost(serverAddress + "objects/" + pid +
-									 "/" + ds + "/fcr:content");
-		post.setEntity(new StringEntity(content));
-		return post;
-	}
+    protected static HttpPost postDSMethod(final String pid, final String ds,
+            final String content) throws UnsupportedEncodingException {
+        final HttpPost post =
+                new HttpPost(serverAddress + "objects/" + pid + "/" + ds +
+                        "/fcr:content");
+        post.setEntity(new StringEntity(content));
+        return post;
+    }
 
-	protected HttpResponse execute(final HttpUriRequest method)
-			throws ClientProtocolException, IOException {
-		logger.debug("Executing: " + method.getMethod() + " to " +
-							 method.getURI());
-		return client.execute(method);
-	}
+    protected HttpResponse execute(final HttpUriRequest method)
+            throws ClientProtocolException, IOException {
+        logger.debug("Executing: " + method.getMethod() + " to " +
+                method.getURI());
+        return client.execute(method);
+    }
 
-	protected int getStatus(final HttpUriRequest method)
-			throws ClientProtocolException, IOException {
-		HttpResponse response = execute(method);
-		int result = response.getStatusLine().getStatusCode();
-		if (!(result > 199) || !(result < 400)){
-			logger.warn(EntityUtils.toString(response.getEntity()));
-		}
-		return result;
-	}
+    protected int getStatus(final HttpUriRequest method)
+            throws ClientProtocolException, IOException {
+        HttpResponse response = execute(method);
+        int result = response.getStatusLine().getStatusCode();
+        if (!(result > 199) || !(result < 400)) {
+            logger.warn(EntityUtils.toString(response.getEntity()));
+        }
+        return result;
+    }
 }
