@@ -13,7 +13,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.Test;
-import org.springframework.test.context.ContextConfiguration;
 
 public class BagItSerializerIT extends AbstractResourceIT {
 

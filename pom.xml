@@ -15,7 +15,7 @@
       <artifactId>fcrepo-serialization</artifactId>
       <version>${project.version}</version>
     </dependency>
-    
+
     <!-- test gear -->
     <dependency>
       <groupId>org.fcrepo</groupId>
@@ -23,7 +23,7 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
-        <dependency>
+    <dependency>
       <groupId>org.fcrepo</groupId>
       <artifactId>fcrepo-http-commons</artifactId>
       <version>${project.version}</version>
@@ -74,16 +74,16 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <!-- Logging: we'll use LogBack (which implements the SLF4J API); ModeShape 
-      knows what to do. -->
+    <!-- Logging: we'll use LogBack (which implements the SLF4J API); ModeShape knows 
+      what to do. -->
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
     </dependency>
-    <!-- This dependency is for compile-time: it keeps this module independent 
-      of any given choice of JAX-RS implementation. It must be _after_ the test 
-      gear. Otherwise it will get loaded during test phase, but because this is 
-      just an API, the tests will not be able to execute. -->
+    <!-- This dependency is for compile-time: it keeps this module independent of 
+      any given choice of JAX-RS implementation. It must be _after_ the test gear. Otherwise 
+      it will get loaded during test phase, but because this is just an API, the tests 
+      will not be able to execute. -->
     <dependency>
       <groupId>javax</groupId>
       <artifactId>javaee-api</artifactId>
@@ -95,16 +95,20 @@
       <exclusions>
         <exclusion>
           <groupId>commons-logging</groupId>
-          <artifactId>*</artifactId>
+          <artifactId>commons-logging</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>commons-logging</groupId>
+          <artifactId>commons-logging-api</artifactId>
         </exclusion>
         <exclusion>
           <groupId>log4j</groupId>
-          <artifactId>*</artifactId>
+          <artifactId>log4j</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
   </dependencies>
-  
+
   <build>
     <plugins>
       <plugin>

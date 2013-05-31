@@ -43,7 +43,6 @@ import org.fcrepo.Datastream;
 import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
-import org.fcrepo.utils.PropertyIterator;
 import org.slf4j.Logger;
 
 import com.google.common.base.Function;
@@ -122,10 +121,10 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         }
 
         // and recurse, to pick up datastream children
-        for (final Iterator i =
+        for (final Iterator<Node> i =
                 filter(node.getNodes(), isFedoraDatastream); i
                 .hasNext();) {
-            final Node dsNode = (Node)i.next();
+            final Node dsNode = i.next();
             logger.debug("Now recording child node: " + dsNode.getName());
             bag.addFileToPayload(serializeToFile(dsNode));
         }
