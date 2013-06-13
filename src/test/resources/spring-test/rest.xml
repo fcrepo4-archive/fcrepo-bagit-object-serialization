@@ -9,25 +9,14 @@
   <context:property-placeholder />
   <context:annotation-config />
 
-  <util:map id="serializers" key-type="java.lang.String"
-    value-type="org.fcrepo.serialization.FedoraObjectSerializer">
-    <description>Map from formats to serializers for Fedora objects
-    </description>
-    <entry key="bagit">
-      <bean class="org.fcrepo.serialization.bagit.BagItSerializer">
-        <property name="prefixes">
-          <set value-type="java.lang.String">
-            <value>fedora</value>
-            <value>dc</value>
-          </set>
-        </property>
-      </bean>
-    </entry>
-  </util:map>
+  <util:set id="bagitPrefixes" value-type="java.lang.String">
+    <value>fedora</value>
+    <value>dc</value>
+  </util:set>
 
 
   <context:component-scan
-    base-package="org.modeshape.web.jcr.rest, org.fcrepo.api, org.fcrepo.serialization, org.fcrepo.responses, org.fcrepo.exceptionhandlers" />
+    base-package="org.modeshape.web.jcr.rest, org.fcrepo.api, org.fcrepo.serialization, org.fcrepo.serialization.bagit, org.fcrepo.responses, org.fcrepo.exceptionhandlers" />
 
   <!-- Mints PIDs -->
   <bean class="org.fcrepo.identifiers.UUIDPidMinter" />

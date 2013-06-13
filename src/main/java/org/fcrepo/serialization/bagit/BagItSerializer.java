@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import javax.annotation.Resource;
 import javax.jcr.Node;
 import javax.jcr.Property;
 import javax.jcr.RepositoryException;
@@ -48,14 +49,22 @@ import org.slf4j.Logger;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
+import org.springframework.stereotype.Component;
 
+@Component
 public class BagItSerializer extends BaseFedoraObjectSerializer {
 
+    @Resource( name="bagitPrefixes" )
     private Set<String> prefixes;
 
     private BagFactory bagFactory = new BagFactory();
 
     private Logger logger = getLogger(this.getClass());
+
+    @Override
+    public String getKey() {
+        return "bagit";
+    }
 
     @Override
     public void serialize(final FedoraObject obj, final OutputStream out)
