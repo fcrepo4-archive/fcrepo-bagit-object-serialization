@@ -67,6 +67,11 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     }
 
     @Override
+    public String getMediaType() {
+        return "application/zip";
+    }
+
+    @Override
     public void serialize(final FedoraObject obj, final OutputStream out)
             throws RepositoryException, IOException {
         checkNotNull(obj, "Cannot serialize a null FedoraObject!");
