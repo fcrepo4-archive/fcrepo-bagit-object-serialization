@@ -21,7 +21,8 @@ public class BagItSerializerIT extends AbstractResourceIT {
         client.execute(postObjMethod("BagIt1"));
         client.execute(postDSMethod("BagIt1", "testDS", "stuff"));
         final HttpGet getObjMethod =
-                new HttpGet(serverAddress + "objects/BagIt1/fcr:export?format=bagit");
+                new HttpGet(serverAddress +
+                        "objects/BagIt1/fcr:export?format=bagit");
         HttpResponse response = client.execute(getObjMethod);
         assertEquals(200, response.getStatusLine().getStatusCode());
         final String content = EntityUtils.toString(response.getEntity());
@@ -34,8 +35,7 @@ public class BagItSerializerIT extends AbstractResourceIT {
         assertEquals("Couldn't import!", 201, getStatus(importMethod));
         final HttpGet httpGet = new HttpGet(serverAddress + "objects/BagIt1");
         httpGet.setHeader("Accepts", "application/n3");
-        response =
-                client.execute(httpGet);
+        response = client.execute(httpGet);
         assertEquals("Couldn't find reimported object!", 200, response
                 .getStatusLine().getStatusCode());
         response =

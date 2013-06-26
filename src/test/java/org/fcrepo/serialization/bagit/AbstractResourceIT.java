@@ -66,14 +66,14 @@ public abstract class AbstractResourceIT {
     }
 
     protected HttpResponse execute(final HttpUriRequest method)
-            throws ClientProtocolException, IOException {
+        throws ClientProtocolException, IOException {
         logger.debug("Executing: " + method.getMethod() + " to " +
                 method.getURI());
         return client.execute(method);
     }
 
     protected int getStatus(final HttpUriRequest method)
-            throws ClientProtocolException, IOException {
+        throws ClientProtocolException, IOException {
         HttpResponse response = execute(method);
         int result = response.getStatusLine().getStatusCode();
         if (!(result > 199) || !(result < 400)) {

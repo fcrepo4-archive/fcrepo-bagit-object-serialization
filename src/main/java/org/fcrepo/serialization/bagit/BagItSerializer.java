@@ -45,16 +45,16 @@ import org.fcrepo.FedoraObject;
 import org.fcrepo.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
 import org.slf4j.Logger;
+import org.springframework.stereotype.Component;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
-import org.springframework.stereotype.Component;
 
 @Component
 public class BagItSerializer extends BaseFedoraObjectSerializer {
 
-    @Resource( name="bagitPrefixes" )
+    @Resource(name = "bagitPrefixes")
     private Set<String> prefixes;
 
     private BagFactory bagFactory = new BagFactory();
@@ -73,7 +73,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
     @Override
     public void serialize(final FedoraObject obj, final OutputStream out)
-            throws RepositoryException, IOException {
+        throws RepositoryException, IOException {
         checkNotNull(obj, "Cannot serialize a null FedoraObject!");
         logger.debug("Serializing object: " + obj.getName());
         try (final InputStream is =
@@ -82,8 +82,16 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         }
     }
 
+    /**
+     * TODO
+     * 
+     * @param node
+     * @return
+     * @throws RepositoryException
+     * @throws IOException
+     */
     public File serializeToFile(final Node node) throws RepositoryException,
-            IOException {
+        IOException {
         checkNotNull(node, "Cannot serialize a null Node!");
         final File bagFile = createTempDir();
         logger.debug("Bag assembly directory created at: {}", bagFile.getPath());
@@ -102,7 +110,8 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         bag.addFileAsTag(bagInfoTxtFile);
         // get recordable properties
         logger.trace("Retrieving properties to serialize...");
-        final Iterator<Property> properties = node.getProperties(prefixesInGlobForm());
+        final Iterator<Property> properties =
+                node.getProperties(prefixesInGlobForm());
         // put 'em in a tag info file
         logger.trace("Recording properties...");
         final BagInfoTxt bagInfoTxt = bag.getBagInfoTxt();
@@ -136,8 +145,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
         // and recurse, to pick up datastream children
         for (final Iterator<Node> i =
-                filter(node.getNodes(), isFedoraDatastream); i
-                .hasNext();) {
+                filter(node.getNodes(), isFedoraDatastream); i.hasNext();) {
             final Node dsNode = i.next();
             logger.debug("Now recording child node: " + dsNode.getName());
             bag.addFileToPayload(serializeToFile(dsNode));
@@ -165,8 +173,9 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     }
 
     @Override
-    public void deserialize(final Session session, final String path, final InputStream stream)
-            throws IOException, RepositoryException, InvalidChecksumException {
+    public void deserialize(final Session session, final String path,
+            final InputStream stream) throws IOException, RepositoryException,
+        InvalidChecksumException {
         logger.trace("Deserializing a Fedora object from a BagIt bag.");
 
         final File importFile = createTempFile("fedora-bagit-import", "");
@@ -179,7 +188,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         logger.trace("Created temporary Bag for Fedora object.");
         final BagInfoTxt infoTxt = bag.getBagInfoTxt();
 
-		final String objectPath = path + "/" + infoTxt.get("Name");
+        final String objectPath = path + "/" + infoTxt.get("Name");
 
         // first make object and add its properties
         final FedoraObject object =
@@ -269,6 +278,11 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
         }
     };
 
+    /**
+     * TODO
+     * 
+     * @param prefixes
+     */
     public void setPrefixes(final Set<String> prefixes) {
         this.prefixes = prefixes;
     }
@@ -281,7 +295,6 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
 
         @Override
         public String apply(final String input) {
-            // TODO Auto-generated method stub
             return input + ":*";
         }
     };
