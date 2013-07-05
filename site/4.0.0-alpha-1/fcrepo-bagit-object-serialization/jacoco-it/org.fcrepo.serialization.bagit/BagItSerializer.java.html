@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BagItSerializer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="right"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Fedora object serialization in BagIt form</a> &gt; <a href="index.html" class="el_package">org.fcrepo.serialization.bagit</a> &gt; <span class="el_source">BagItSerializer.java</span></div><h1>BagItSerializer.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2013 DuraSpace, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.fcrepo.serialization.bagit;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Collections2.transform;
+import static com.google.common.collect.ImmutableList.copyOf;
+import static com.google.common.collect.ImmutableList.of;
+import static com.google.common.collect.Iterables.filter;
+import static com.google.common.collect.Iterators.filter;
+import static com.google.common.collect.Iterators.transform;
+import static com.google.common.io.ByteStreams.copy;
+import static com.google.common.io.Files.createTempDir;
+import static java.io.File.createTempFile;
+import static org.fcrepo.utils.FedoraTypesUtils.isFedoraDatastream;
+import static org.modeshape.jcr.api.JcrConstants.JCR_CONTENT;
+import static org.modeshape.jcr.api.JcrConstants.JCR_DATA;
+import static org.slf4j.LoggerFactory.getLogger;
+import gov.loc.repository.bagit.Bag;
+import gov.loc.repository.bagit.BagFactory;
+import gov.loc.repository.bagit.BagFile;
+import gov.loc.repository.bagit.BagInfoTxt;
+import gov.loc.repository.bagit.utilities.SimpleResult;
+import gov.loc.repository.bagit.utilities.namevalue.NameValueReader.NameValue;
+import gov.loc.repository.bagit.writer.impl.ZipWriter;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+
+import javax.annotation.Resource;
+import javax.jcr.Node;
+import javax.jcr.Property;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import javax.jcr.Value;
+
+import org.fcrepo.Datastream;
+import org.fcrepo.FedoraObject;
+import org.fcrepo.exception.InvalidChecksumException;
+import org.fcrepo.serialization.BaseFedoraObjectSerializer;
+import org.slf4j.Logger;
+import org.springframework.stereotype.Component;
+
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Lists;
+
+@Component
+<span class="fc" id="L70">public class BagItSerializer extends BaseFedoraObjectSerializer {</span>
+
+    @Resource(name = &quot;bagitPrefixes&quot;)
+    private Set&lt;String&gt; prefixes;
+
+<span class="fc" id="L75">    private BagFactory bagFactory = new BagFactory();</span>
+
+<span class="fc" id="L77">    private Logger logger = getLogger(this.getClass());</span>
+
+    @Override
+    public String getKey() {
+<span class="fc" id="L81">        return &quot;bagit&quot;;</span>
+    }
+
+    @Override
+    public String getMediaType() {
+<span class="fc" id="L86">        return &quot;application/zip&quot;;</span>
+    }
+
+    @Override
+    public void serialize(final FedoraObject obj, final OutputStream out)
+        throws RepositoryException, IOException {
+<span class="fc" id="L92">        checkNotNull(obj, &quot;Cannot serialize a null FedoraObject!&quot;);</span>
+<span class="fc" id="L93">        logger.debug(&quot;Serializing object: &quot; + obj.getName());</span>
+<span class="pc" id="L94">        try (final InputStream is =</span>
+                new FileInputStream(serializeToFile(obj.getNode()))) {
+<span class="fc" id="L96">            copy(is, out);</span>
+<span class="pc bpc" id="L97" title="6 of 8 branches missed.">        }</span>
+<span class="fc" id="L98">    }</span>
+
+    /**
+     * TODO
+     * 
+     * @param node
+     * @return
+     * @throws RepositoryException
+     * @throws IOException
+     */
+    public File serializeToFile(final Node node) throws RepositoryException,
+        IOException {
+<span class="fc" id="L110">        checkNotNull(node, &quot;Cannot serialize a null Node!&quot;);</span>
+<span class="fc" id="L111">        final File bagFile = createTempDir();</span>
+<span class="fc" id="L112">        logger.debug(&quot;Bag assembly directory created at: {}&quot;, bagFile.getPath());</span>
+        // create bag-info.txt
+<span class="fc" id="L114">        final File bagInfoTxtFile =</span>
+                new File(bagFile, bagFactory.getBagConstants().getBagInfoTxt());
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">        if (!bagInfoTxtFile.createNewFile()) {</span>
+<span class="nc" id="L117">            throw new IllegalStateException(</span>
+                    &quot;Could not create a bag-info-.txt file!&quot;);
+        }
+<span class="fc" id="L120">        logger.debug(&quot;bag-info.txt file created at: {}&quot;, bagInfoTxtFile</span>
+                .getPath());
+<span class="fc" id="L122">        bagInfoTxtFile.deleteOnExit();</span>
+<span class="fc" id="L123">        bagFile.deleteOnExit();</span>
+<span class="fc" id="L124">        final Bag bag = bagFactory.createBag();</span>
+<span class="fc" id="L125">        bag.addFileAsTag(bagInfoTxtFile);</span>
+        // get recordable properties
+<span class="fc" id="L127">        logger.trace(&quot;Retrieving properties to serialize...&quot;);</span>
+<span class="fc" id="L128">        final Iterator&lt;Property&gt; properties =</span>
+                node.getProperties(prefixesInGlobForm());
+        // put 'em in a tag info file
+<span class="fc" id="L131">        logger.trace(&quot;Recording properties...&quot;);</span>
+<span class="fc" id="L132">        final BagInfoTxt bagInfoTxt = bag.getBagInfoTxt();</span>
+        // slip in object name
+<span class="fc" id="L134">        bagInfoTxt.put(&quot;Name&quot;, node.getName());</span>
+<span class="fc" id="L135">        for (final Iterator&lt;List&lt;NameValue&gt;&gt; i =</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">                transform(properties, property2BagItTags); i.hasNext();) {</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">            for (final NameValue tag : i.next()) {</span>
+<span class="nc" id="L138">                logger.debug(&quot;Recording property: &quot; + tag);</span>
+<span class="nc" id="L139">                bagInfoTxt.putList(tag);</span>
+<span class="nc" id="L140">            }</span>
+        }
+
+<span class="fc" id="L143">        logger.trace(&quot;Recorded properties.&quot;);</span>
+
+        // now add content, if it exists
+<span class="fc bfc" id="L146" title="All 2 branches covered.">        if (node.hasNode(JCR_CONTENT)) {</span>
+<span class="fc" id="L147">            logger.trace(&quot;Recording binary content...&quot;);</span>
+<span class="fc" id="L148">            final File contentFile = new File(bagFile, &quot;content&quot;);</span>
+<span class="fc" id="L149">            contentFile.deleteOnExit();</span>
+<span class="pc" id="L150">            try (final OutputStream contentFileStream =</span>
+                    new FileOutputStream(contentFile);
+<span class="fc" id="L152">                    final InputStream contentStream =</span>
+                            node.getNode(JCR_CONTENT).getProperty(JCR_DATA)
+                                    .getBinary().getStream()) {
+<span class="fc" id="L155">                copy(contentStream, contentFileStream);</span>
+<span class="pc bpc" id="L156" title="12 of 16 branches missed.">            }</span>
+<span class="fc" id="L157">            bag.addFileToPayload(contentFile);</span>
+<span class="fc" id="L158">            logger.trace(&quot;Recorded binary content.&quot;);</span>
+        }
+
+        // and recurse, to pick up datastream children
+<span class="fc" id="L162">        for (final Iterator&lt;Node&gt; i =</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">                filter(node.getNodes(), isFedoraDatastream); i.hasNext();) {</span>
+<span class="fc" id="L164">            final Node dsNode = i.next();</span>
+<span class="fc" id="L165">            logger.debug(&quot;Now recording child node: &quot; + dsNode.getName());</span>
+<span class="fc" id="L166">            bag.addFileToPayload(serializeToFile(dsNode));</span>
+<span class="fc" id="L167">        }</span>
+
+        // create the final ZIP'd artifact
+<span class="fc" id="L170">        logger.trace(&quot;Creating final ZIP artifact...&quot;);</span>
+        // we use a temp directory but a normal file inside it. this
+        // is so we can control the name of the file, so that the names
+        // of files in data/ in the bag are reasonable.
+<span class="fc" id="L174">        final File housingDir = createTempDir();</span>
+<span class="fc" id="L175">        housingDir.deleteOnExit();</span>
+<span class="fc" id="L176">        final File nodeZippedBag = new File(housingDir, node.getName());</span>
+<span class="fc" id="L177">        nodeZippedBag.deleteOnExit();</span>
+<span class="fc" id="L178">        final Bag finishedBag = bag.makeComplete();</span>
+<span class="fc" id="L179">        final SimpleResult result = finishedBag.verifyComplete();</span>
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">        for (final String errorMsg : result.getErrorMessages()) {</span>
+<span class="nc" id="L181">            throw new IllegalStateException(errorMsg);</span>
+        }
+<span class="fc" id="L183">        finishedBag.write(new ZipWriter(bagFactory), nodeZippedBag);</span>
+<span class="fc" id="L184">        logger.trace(&quot;Created final ZIP artifact.&quot;);</span>
+
+<span class="fc" id="L186">        return nodeZippedBag;</span>
+
+    }
+
+    @Override
+    public void deserialize(final Session session, final String path,
+            final InputStream stream) throws IOException, RepositoryException,
+        InvalidChecksumException {
+<span class="fc" id="L194">        logger.trace(&quot;Deserializing a Fedora object from a BagIt bag.&quot;);</span>
+
+<span class="fc" id="L196">        final File importFile = createTempFile(&quot;fedora-bagit-import&quot;, &quot;&quot;);</span>
+<span class="fc" id="L197">        importFile.deleteOnExit();</span>
+<span class="pc" id="L198">        try (final OutputStream importStream = new FileOutputStream(importFile)) {</span>
+<span class="fc" id="L199">            copy(stream, importStream);</span>
+<span class="pc bpc" id="L200" title="6 of 8 branches missed.">        }</span>
+
+<span class="fc" id="L202">        final Bag bag = bagFactory.createBag(importFile);</span>
+<span class="fc" id="L203">        logger.trace(&quot;Created temporary Bag for Fedora object.&quot;);</span>
+<span class="fc" id="L204">        final BagInfoTxt infoTxt = bag.getBagInfoTxt();</span>
+
+<span class="fc" id="L206">        final String objectPath = path + &quot;/&quot; + infoTxt.get(&quot;Name&quot;);</span>
+
+        // first make object and add its properties
+<span class="fc" id="L209">        final FedoraObject object =</span>
+                objService.createObject(session, objectPath);
+<span class="fc" id="L211">        logger.debug(&quot;Created Fedora object: &quot; + objectPath);</span>
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">        for (final String key : filter(infoTxt.keySet(), notNameAndIsPrefixed)) {</span>
+<span class="nc" id="L213">            final List&lt;String&gt; values = infoTxt.getList(key);</span>
+<span class="nc" id="L214">            logger.debug(&quot;Adding property for: &quot; + key + &quot; with values: &quot; +</span>
+                    values);
+<span class="nc bnc" id="L216" title="All 2 branches missed.">            if (values.size() == 1) {</span>
+<span class="nc" id="L217">                object.getNode().setProperty(key.replace('_', ':'),</span>
+                        values.get(0));
+            } else {
+<span class="nc" id="L220">                object.getNode().setProperty(key.replace('_', ':'),</span>
+                        infoTxt.getList(key).toArray(new String[0]));
+            }
+<span class="nc" id="L223">        }</span>
+
+        // now for its datastreams
+<span class="fc bfc" id="L226" title="All 2 branches covered.">        for (final BagFile bagFile : bag.getPayload()) {</span>
+<span class="fc" id="L227">            logger.debug(&quot;Deserializing a datastream from filepath: &quot; +</span>
+                    bagFile.getFilepath());
+<span class="fc" id="L229">            final File importDsFile =</span>
+                    createTempFile(&quot;fedora-bagit-import-ds&quot;, &quot;&quot;);
+<span class="fc" id="L231">            importDsFile.deleteOnExit();</span>
+<span class="pc" id="L232">            try (final InputStream dsStream = bagFile.newInputStream();</span>
+<span class="fc" id="L233">                    final OutputStream out = new FileOutputStream(importDsFile)) {</span>
+<span class="fc" id="L234">                copy(dsStream, out);</span>
+<span class="pc bpc" id="L235" title="12 of 16 branches missed.">            }</span>
+<span class="fc" id="L236">            final Bag dsBag = bagFactory.createBag(importDsFile);</span>
+<span class="fc" id="L237">            logger.trace(&quot;Created temporary Bag file for datastream.&quot;);</span>
+<span class="fc" id="L238">            final BagInfoTxt dsInfoTxt = dsBag.getBagInfoTxt();</span>
+<span class="fc" id="L239">            final String dsPath = objectPath + &quot;/&quot; + dsInfoTxt.get(&quot;Name&quot;);</span>
+<span class="fc" id="L240">            logger.debug(&quot;Found ds path: &quot; + dsPath);</span>
+<span class="fc" id="L241">            final String contentType = dsInfoTxt.get(&quot;fedora_contentType&quot;);</span>
+<span class="fc" id="L242">            logger.debug(&quot;Found ds contentType: &quot; + contentType);</span>
+<span class="fc" id="L243">            final InputStream requestBodyStream =</span>
+                    dsBag.getPayload().iterator().next().newInputStream();
+<span class="fc" id="L245">            final Datastream ds =</span>
+                    new Datastream(dsService.createDatastreamNode(session,
+                            dsPath, contentType, requestBodyStream));
+<span class="fc" id="L248">            logger.debug(&quot;Created Fedora datastream: &quot; + ds.getDsId());</span>
+<span class="fc" id="L249">        }</span>
+
+<span class="fc" id="L251">        session.save();</span>
+
+<span class="fc" id="L253">    }</span>
+
+<span class="fc" id="L255">    private Function&lt;Property, List&lt;NameValue&gt;&gt; property2BagItTags =</span>
+<span class="fc" id="L256">            new Function&lt;Property, List&lt;NameValue&gt;&gt;() {</span>
+
+                @Override
+                public List&lt;NameValue&gt; apply(final Property p) {
+                    try {
+<span class="nc" id="L261">                        final String name = p.getName().replace(':', '_');</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">                        if (p.isMultiple()) {</span>
+<span class="nc" id="L263">                            return Lists.transform(copyOf(p.getValues()),</span>
+<span class="nc" id="L264">                                    new Function&lt;Value, NameValue&gt;() {</span>
+
+                                        @Override
+                                        public NameValue apply(final Value v) {
+                                            try {
+<span class="nc" id="L269">                                                return new NameValue(name, v</span>
+                                                        .getString());
+<span class="nc" id="L271">                                            } catch (final RepositoryException e) {</span>
+<span class="nc" id="L272">                                                throw new IllegalStateException(</span>
+                                                        e);
+                                            }
+                                        }
+                                    });
+
+                        } else {
+<span class="nc" id="L279">                            return of(new NameValue(name, p.getString()));</span>
+                        }
+
+<span class="nc" id="L282">                    } catch (final RepositoryException e) {</span>
+<span class="nc" id="L283">                        throw new IllegalStateException(e);</span>
+                    }
+                }
+            };
+
+<span class="fc" id="L288">    private Predicate&lt;String&gt; notNameAndIsPrefixed = new Predicate&lt;String&gt;() {</span>
+
+        @Override
+        public boolean apply(final String key) {
+<span class="pc bpc" id="L292" title="1 of 4 branches missed.">            return !key.equals(&quot;Name&quot;) &amp;&amp; prefixes.contains(key.split(&quot;_&quot;)[0]);</span>
+        }
+    };
+
+    /**
+     * TODO
+     * 
+     * @param prefixes
+     */
+    public void setPrefixes(final Set&lt;String&gt; prefixes) {
+<span class="nc" id="L302">        this.prefixes = prefixes;</span>
+<span class="nc" id="L303">    }</span>
+
+    private String[] prefixesInGlobForm() {
+<span class="fc" id="L306">        return transform(prefixes, makeGlob).toArray(new String[0]);</span>
+    }
+
+<span class="fc" id="L309">    private Function&lt;String, String&gt; makeGlob = new Function&lt;String, String&gt;() {</span>
+
+        @Override
+        public String apply(final String input) {
+<span class="fc" id="L313">            return input + &quot;:*&quot;;</span>
+        }
+    };
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.6.3.201306030806</span></div></body></html>
