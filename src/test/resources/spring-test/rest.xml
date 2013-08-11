@@ -16,10 +16,10 @@
 
 
   <context:component-scan
-    base-package="org.modeshape.web.jcr.rest, org.fcrepo.services, org.fcrepo.api, org.fcrepo.serialization, org.fcrepo.serialization.bagit, org.fcrepo.responses, org.fcrepo.exceptionhandlers" />
+    base-package="org.modeshape.web.jcr.rest, org.fcrepo.kernel.services, org.fcrepo.http, org.fcrepo.serialization, org.fcrepo.serialization.bagit" />
 
   <!-- Mints PIDs -->
-  <bean class="org.fcrepo.identifiers.UUIDPidMinter" />
-  <bean class="org.fcrepo.session.SessionFactory" />
+  <bean class="org.fcrepo.kernel.identifiers.UUIDPidMinter" />
+  <bean class="org.fcrepo.http.commons.session.SessionFactory" />
 
 </beans>

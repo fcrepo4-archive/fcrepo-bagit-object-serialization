@@ -26,7 +26,7 @@ import static com.google.common.collect.Iterators.transform;
 import static com.google.common.io.ByteStreams.copy;
 import static com.google.common.io.Files.createTempDir;
 import static java.io.File.createTempFile;
-import static org.fcrepo.utils.FedoraTypesUtils.isFedoraDatastream;
+import static org.fcrepo.kernel.utils.FedoraTypesUtils.isFedoraDatastream;
 import static org.modeshape.jcr.api.JcrConstants.JCR_CONTENT;
 import static org.modeshape.jcr.api.JcrConstants.JCR_DATA;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -55,9 +55,9 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
 
-import org.fcrepo.Datastream;
-import org.fcrepo.FedoraObject;
-import org.fcrepo.exception.InvalidChecksumException;
+import org.fcrepo.kernel.Datastream;
+import org.fcrepo.kernel.FedoraObject;
+import org.fcrepo.kernel.exception.InvalidChecksumException;
 import org.fcrepo.serialization.BaseFedoraObjectSerializer;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Component;
@@ -190,7 +190,7 @@ public class BagItSerializer extends BaseFedoraObjectSerializer {
     @Override
     public void deserialize(final Session session, final String path,
             final InputStream stream) throws IOException, RepositoryException,
-        InvalidChecksumException {
+            InvalidChecksumException {
         logger.trace("Deserializing a Fedora object from a BagIt bag.");
 
         final File importFile = createTempFile("fedora-bagit-import", "");
